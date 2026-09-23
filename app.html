@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Lumen — SketchUp Render Studio</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#F5F5F1; --ink:#1C1E1B; --ink-soft:#5A5D57;
+  --line:#D9D8D1; --brass:#B8823E; --brass-dim:#E7D3B0;
+  --panel:#FFFFFF;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --paper:#17181A; --ink:#F1EFE9; --ink-soft:#A6A49C;
+    --line:#333430; --panel:#1F2022; --brass:#D2A05C; --brass-dim:#4A3B24;
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#17181A; --ink:#F1EFE9; --ink-soft:#A6A49C;
+  --line:#333430; --panel:#1F2022; --brass:#D2A05C; --brass-dim:#4A3B24;
+}
+*{margin:0;box-sizing:border-box}
+html,body{height:100%}
+body{background:var(--paper);color:var(--ink);font-family:'IBM Plex Sans',sans-serif;-webkit-font-smoothing:antialiased}
+.wrap{max-width:920px;margin:0 auto;padding:32px 20px 80px}
+h1{font-family:'Fraunces',serif;font-weight:600;font-size:clamp(28px,4vw,38px);letter-spacing:-0.01em}
+.tag{color:var(--ink-soft);margin-top:6px;font-size:15px}
+.steps{display:flex;gap:6px;margin:28px 0;border-bottom:1px solid var(--line);overflow-x:auto}
+.step-btn{background:none;border:none;padding:10px 4px;margin-right:22px;font:500 14px 'IBM Plex Sans',sans-serif;color:var(--ink-soft);cursor:pointer;border-bottom:2px solid transparent;white-space:nowrap}
+.step-btn.active{color:var(--ink);border-color:var(--brass)}
+.panel{display:none}
+.panel.active{display:block;animation:fade .25s ease}
+@keyframes fade{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:22px}
+.card + .card{margin-top:16px}
+label.field-label{display:block;font-size:13px;color:var(--ink-soft);margin-bottom:8px}
+.upload{border:1px dashed var(--line);border-radius:6px;padding:24px;text-align:center;cursor:pointer;transition:border-color .15s}
+.upload:hover{border-color:var(--brass)}
+.upload input{display:none}
+.upload-hint{font-size:13px;color:var(--ink-soft)}
+.preview{max-width:100%;border-radius:4px;display:block;margin-top:14px}
+.marker-toolbar{display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap}
+.marker-btn{border:1px solid var(--line);background:var(--panel);color:var(--ink);border-radius:20px;padding:7px 14px;font-size:13px;cursor:pointer;display:flex;align-items:center;gap:6px}
+.marker-btn.active{border-color:var(--brass);background:var(--brass-dim)}
+.dot{width:9px;height:9px;border-radius:50%}
+.dot.camera{background:#4C6EF5}
+.dot.light{background:#E6B84D}
+.dot.window{background:#D9524A}
+.canvas-wrap{position:relative;border:1px solid var(--line);border-radius:4px;overflow:hidden;touch-action:none}
+.canvas-wrap img{width:100%;display:block}
+.marker{position:absolute;transform:translate(-50%,-50%);width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;color:#fff;cursor:pointer;box-shadow:0 0 0 2px #fff}
+.marker.camera{background:#4C6EF5}
+.marker.light{background:#E6B84D}
+.marker.window{background:#D9524A}
+.empty-hint{font-size:13px;color:var(--ink-soft);margin-top:10px}
+.row{display:flex;gap:16px;flex-wrap:wrap}
+.row > .card{flex:1;min-width:240px}
+.segmented{display:flex;border:1px solid var(--line);border-radius:20px;overflow:hidden;width:fit-content}
+.segmented button{background:none;border:none;padding:8px 16px;font-size:13px;color:var(--ink-soft);cursor:pointer}
+.segmented button.active{background:var(--brass);color:#fff}
+.switch-row{display:flex;align-items:center;justify-content:space-between;padding:4px 0}
+.switch{position:relative;width:42px;height:24px;border-radius:12px;background:var(--line);cursor:pointer;transition:background .15s;flex-shrink:0}
+.switch.on{background:var(--brass)}
+.switch::after{content:'';position:absolute;top:2px;left:2px;width:20px;height:20px;border-radius:50%;background:#fff;transition:transform .15s}
+.switch.on::after{transform:translateX(18px)}
+textarea{width:100%;border:1px solid var(--line);border-radius:4px;padding:10px;font:400 14px 'IBM Plex Sans',sans-serif;background:var(--paper);color:var(--ink);resize:vertical;min-height:70px}
+.thumbs{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.thumb{width:64px;height:64px;border-radius:4px;object-fit:cover;border:1px solid var(--line)}
+.btn{background:var(--ink);color:var(--paper);border:none;border-radius:4px;padding:12px 22px;font:500 14px 'IBM Plex Sans',sans-serif;cursor:pointer}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+.btn-primary{background:var(--brass);color:#1C1E1B}
+.nav-btns{display:flex;justify-content:space-between;margin-top:24px}
+.result-badge{display:inline-block;font-size:12px;background:var(--brass-dim);color:var(--ink);padding:4px 10px;border-radius:12px;margin-bottom:10px}
+.loading{display:flex;align-items:center;gap:10px;color:var(--ink-soft);font-size:14px;padding:30px 0}
+.spinner{width:16px;height:16px;border:2px solid var(--line);border-top-color:var(--brass);border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.note{font-size:13px;color:var(--ink-soft);margin-top:14px;line-height:1.5}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Lumen</h1>
+  <p class="tag">Turn a SketchUp print into a photoreal render — geometry and materials locked, lighting set from your floor plan.</p>
+
+  <div class="steps">
+    <button class="step-btn active" data-step="0">1. Upload print</button>
+    <button class="step-btn" data-step="1">2. Annotate plan</button>
+    <button class="step-btn" data-step="2">3. Lighting</button>
+    <button class="step-btn" data-step="3">4. Extras</button>
+    <button class="step-btn" data-step="4">5. Render</button>
+  </div>
+
+  <!-- Step 0 -->
+  <div class="panel active" data-panel="0">
+    <div class="card">
+      <label class="field-label">SketchUp print (exported screenshot)</label>
+      <div class="upload" id="printUpload">
+        <input type="file" id="printInput" accept="image/*">
+        <div class="upload-hint">Click to choose an image, or drop one here</div>
+      </div>
+      <img id="printPreview" class="preview" style="display:none">
+    </div>
+    <div class="nav-btns"><span></span><button class="btn" onclick="goStep(1)">Next: Annotate plan</button></div>
+  </div>
+
+  <!-- Step 1 -->
+  <div class="panel" data-panel="1">
+    <div class="card">
+      <label class="field-label">Floor plan (top-down)</label>
+      <div class="upload" id="planUpload">
+        <input type="file" id="planInput" accept="image/*">
+        <div class="upload-hint">Click to choose the floor plan image</div>
+      </div>
+      <div id="planCanvasArea" style="display:none;margin-top:14px">
+        <div class="marker-toolbar">
+          <button class="marker-btn active" data-type="camera"><span class="dot camera"></span> Camera</button>
+          <button class="marker-btn" data-type="light"><span class="dot light"></span> Ceiling light</button>
+          <button class="marker-btn" data-type="window"><span class="dot window"></span> Window / sun direction</button>
+        </div>
+        <div class="canvas-wrap" id="canvasWrap">
+          <img id="planImg">
+        </div>
+        <p class="empty-hint">Click on the plan to place a marker of the selected type. Click a placed marker to remove it.</p>
+      </div>
+    </div>
+    <div class="nav-btns"><button class="btn" onclick="goStep(0)">Back</button><button class="btn" onclick="goStep(2)">Next: Lighting</button></div>
+  </div>
+
+  <!-- Step 2 -->
+  <div class="panel" data-panel="2">
+    <div class="row">
+      <div class="card">
+        <label class="field-label">Natural light</label>
+        <div class="segmented" id="sunSeg">
+          <button class="active" data-val="off">Off</button>
+          <button data-val="indirect">No direct sun</button>
+          <button data-val="direct">Direct sunlight</button>
+        </div>
+      </div>
+      <div class="card">
+        <label class="field-label">Artificial light</label>
+        <div class="switch-row">
+          <span style="font-size:14px">Ceiling lights on</span>
+          <div class="switch on" id="artSwitch"></div>
+        </div>
+      </div>
+    </div>
+    <div class="nav-btns"><button class="btn" onclick="goStep(1)">Back</button><button class="btn" onclick="goStep(3)">Next: Extras</button></div>
+  </div>
+
+  <!-- Step 3 -->
+  <div class="panel" data-panel="3">
+    <div class="card">
+      <label class="field-label">Reference render (for consistency across views of this project)</label>
+      <div class="upload" id="refUpload"><input type="file" id="refInput" accept="image/*"><div class="upload-hint">Optional — upload a previous render</div></div>
+      <div class="thumbs" id="refThumbs"></div>
+    </div>
+    <div class="card">
+      <label class="field-label">Prop references (planters, vases, books…)</label>
+      <div class="upload" id="propUpload"><input type="file" id="propInput" accept="image/*" multiple><div class="upload-hint">Optional — add one or more images</div></div>
+      <div class="thumbs" id="propThumbs"></div>
+    </div>
+    <div class="card">
+      <label class="field-label">Remarks / corrections</label>
+      <textarea id="remarks" placeholder="e.g. make the tile warmer, reduce shadow under the vanity…"></textarea>
+    </div>
+    <div class="nav-btns"><button class="btn" onclick="goStep(2)">Back</button><button class="btn" onclick="goStep(4)">Next: Render</button></div>
+  </div>
+
+  <!-- Step 4 -->
+  <div class="panel" data-panel="4">
+    <div class="card">
+      <label class="field-label">Backend URL (from deploying backend.py — leave blank to use the demo preview)</label>
+      <input type="text" id="backendUrl" placeholder="https://your-app.up.railway.app" style="width:100%;border:1px solid var(--line);border-radius:4px;padding:9px 10px;font:400 13px 'IBM Plex Sans',sans-serif;background:var(--paper);color:var(--ink)">
+    </div>
+    <div class="card">
+      <label class="field-label">Summary</label>
+      <div id="summary" style="font-size:14px;line-height:1.7;color:var(--ink-soft)"></div>
+      <button class="btn btn-primary" style="margin-top:16px" id="genBtn" onclick="generate()">Generate render</button>
+      <div id="resultArea" style="margin-top:18px"></div>
+    </div>
+    <div class="nav-btns"><button class="btn" onclick="goStep(3)">Back</button><span></span></div>
+  </div>
+</div>
+
+<script>
+let printDataUrl = null, planDataUrl = null, refDataUrl = null, propDataUrls = [];
+let markers = []; // {x,y,type} as % of image
+let activeMarkerType = 'camera';
+let sunMode = 'off', artOn = true;
+
+function goStep(i){
+  document.querySelectorAll('.step-btn').forEach((b,idx)=>b.classList.toggle('active',idx===i));
+  document.querySelectorAll('.panel').forEach(p=>p.classList.toggle('active', +p.dataset.panel===i));
+  if(i===4) buildSummary();
+}
+document.querySelectorAll('.step-btn').forEach(b=>b.addEventListener('click',()=>goStep(+b.dataset.step)));
+
+function wireUpload(uploadId, inputId, onLoad){
+  const box = document.getElementById(uploadId), input = document.getElementById(inputId);
+  box.addEventListener('click', ()=>input.click());
+  input.addEventListener('change', e=>{
+    [...e.target.files].forEach(file=>{
+      const reader = new FileReader();
+      reader.onload = ev => onLoad(ev.target.result, file);
+      reader.readAsDataURL(file);
+    });
+  });
+}
+
+wireUpload('printUpload','printInput',(url)=>{
+  printDataUrl = url;
+  const img = document.getElementById('printPreview');
+  img.src = url; img.style.display='block';
+});
+
+wireUpload('planUpload','planInput',(url)=>{
+  planDataUrl = url;
+  document.getElementById('planImg').src = url;
+  document.getElementById('planCanvasArea').style.display='block';
+  markers = []; renderMarkers();
+});
+
+document.querySelectorAll('.marker-btn').forEach(b=>b.addEventListener('click',()=>{
+  document.querySelectorAll('.marker-btn').forEach(x=>x.classList.remove('active'));
+  b.classList.add('active'); activeMarkerType = b.dataset.type;
+}));
+
+document.getElementById('canvasWrap').addEventListener('click', e=>{
+  if(e.target.classList.contains('marker')) return; // handled by marker's own listener
+  const rect = e.currentTarget.getBoundingClientRect();
+  const x = ((e.clientX - rect.left)/rect.width)*100;
+  const y = ((e.clientY - rect.top)/rect.height)*100;
+  markers.push({x,y,type:activeMarkerType});
+  renderMarkers();
+});
+
+function renderMarkers(){
+  const wrap = document.getElementById('canvasWrap');
+  wrap.querySelectorAll('.marker').forEach(m=>m.remove());
+  const icons = {camera:'CAM', light:'●', window:'☀'};
+  markers.forEach((m,idx)=>{
+    const el = document.createElement('div');
+    el.className = 'marker '+m.type;
+    el.style.left = m.x+'%'; el.style.top = m.y+'%';
+    el.textContent = m.type==='camera' ? '' : (m.type==='light' ? '' : '');
+    el.addEventListener('click', ev=>{ ev.stopPropagation(); markers.splice(idx,1); renderMarkers(); });
+    wrap.appendChild(el);
+  });
+}
+
+document.getElementById('sunSeg').addEventListener('click', e=>{
+  if(e.target.tagName!=='BUTTON') return;
+  [...e.currentTarget.children].forEach(b=>b.classList.remove('active'));
+  e.target.classList.add('active'); sunMode = e.target.dataset.val;
+});
+document.getElementById('artSwitch').addEventListener('click', e=>{
+  artOn = !artOn; e.currentTarget.classList.toggle('on', artOn);
+});
+
+wireUpload('refUpload','refInput',(url)=>{
+  refDataUrl = url;
+  document.getElementById('refThumbs').innerHTML = `<img class="thumb" src="${url}">`;
+});
+wireUpload('propUpload','propInput',(url)=>{
+  propDataUrls.push(url);
+  const t = document.getElementById('propThumbs');
+  t.innerHTML = propDataUrls.map(u=>`<img class="thumb" src="${u}">`).join('');
+});
+
+function buildSummary(){
+  const cam = markers.filter(m=>m.type==='camera').length;
+  const lights = markers.filter(m=>m.type==='light').length;
+  const win = markers.filter(m=>m.type==='window').length;
+  const sunLabel = {off:'off', indirect:'no direct sun', direct:'direct sunlight'}[sunMode];
+  document.getElementById('summary').innerHTML = `
+    Print: ${printDataUrl ? 'uploaded' : '<span style="color:#D9524A">not uploaded</span>'}<br>
+    Floor plan markers: ${cam} camera, ${lights} ceiling light, ${win} window/sun — ${markers.length ? '' : '<span style="color:#D9524A">none placed</span>'}<br>
+    Natural light: ${sunLabel} · Artificial light: ${artOn ? 'on' : 'off'}<br>
+    Reference render: ${refDataUrl ? 'attached' : 'none'} · Props: ${propDataUrls.length} attached<br>
+    Remarks: ${document.getElementById('remarks').value || '—'}
+  `;
+}
+
+function dataUrlToBlob(dataUrl){
+  const [header, b64] = dataUrl.split(',');
+  const mime = header.match(/:(.*?);/)[1];
+  const bin = atob(b64);
+  const arr = new Uint8Array(bin.length);
+  for(let i=0;i<bin.length;i++) arr[i] = bin.charCodeAt(i);
+  return new Blob([arr], {type:mime});
+}
+
+async function generate(){
+  if(!printDataUrl){ alert('Upload a SketchUp print first.'); goStep(0); return; }
+  const area = document.getElementById('resultArea');
+  const btn = document.getElementById('genBtn');
+  const backendUrl = document.getElementById('backendUrl').value.trim();
+  btn.disabled = true;
+  area.innerHTML = `<div class="loading"><div class="spinner"></div> Rendering…</div>`;
+
+  if(backendUrl){
+    try{
+      const form = new FormData();
+      form.append('print_image', dataUrlToBlob(printDataUrl), 'print.png');
+      form.append('sun_mode', sunMode);
+      form.append('art_on', artOn);
+      form.append('remarks', document.getElementById('remarks').value);
+
+      const res = await fetch(backendUrl.replace(/\/$/,'') + '/generate', { method:'POST', body: form });
+      if(!res.ok) throw new Error('Backend returned ' + res.status);
+      const data = await res.json();
+
+      area.innerHTML = `
+        <div class="result-badge" style="background:#DCEFD9;color:#1C1E1B">Real AI render</div>
+        <img class="preview" src="${data.render_url}">
+        <p class="note">Generated by your backend at ${backendUrl}.</p>
+      `;
+    }catch(err){
+      area.innerHTML = `
+        <div class="result-badge" style="background:#F5D9D6">Backend call failed</div>
+        <p class="note">${err.message}. Check the backend URL is correct, the server is running, and (if testing from this Claude-hosted page) that your backend allows cross-origin requests from this origin.</p>
+      `;
+    }
+  } else {
+    await new Promise(r=>setTimeout(r, 1400));
+    area.innerHTML = `
+      <div class="result-badge">Preview mockup — not a real AI render</div>
+      <img class="preview" style="filter:contrast(1.12) saturate(1.2) brightness(1.04) sepia(0.06)" src="${printDataUrl}">
+      <p class="note">No backend URL set, so this is your uploaded print with a cosmetic filter applied. Enter your deployed backend URL above to get a real render, or deploy backend.py first — see the earlier setup steps.</p>
+    `;
+  }
+  btn.disabled = false;
+}
+</script>
+</body>
+</html>
